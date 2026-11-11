@@ -1,0 +1,12 @@
+[
+  {"record_id": "marker-a", "scan_id": "phantom-a", "synthetic": true,
+   "task": "short_answer", "split": "example", "image": null,
+   "turns": [{"turn_id": "0", "question": "Name the marker.", "answer": "Amber"}]},
+  {"record_id": "dialogue-b", "scan_id": "phantom-b", "synthetic": true,
+   "task": "long_answer", "split": "example", "image": null,
+   "turns": [{"turn_id": "0", "question": "Name the two colours.", "answer": "Blue green"},
+             {"turn_id": "1", "question": "Name the two shapes.", "answer": "Circle square"}]},
+  {"record_id": "marker-c", "scan_id": "phantom-c", "synthetic": true,
+   "task": "short_answer", "split": "example", "image": null,
+   "turns": [{"turn_id": "0", "question": "Name the marker.", "answer": "Violet"}]}
+]

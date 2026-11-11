@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ccta-chat"
+version = "0.1.0"
+description = "CCTA instruction preparation, CT-CHAT integration and audited evaluation"
+requires-python = ">=3.10"
+readme = "README.md"
+license = "CC-BY-NC-SA-4.0"
+license-files = ["LICENSE", "APACHE-2.0.txt", "THIRD_PARTY_NOTICES.md"]
+authors = [{name = "Moira Climent"}]
+dependencies = []
+
+[project.optional-dependencies]
+imaging = ["numpy>=1.26,<3", "nibabel>=5,<6", "torch>=2.2,<3"]
+model = ["torch==2.8.0", "transformers==4.44.2", "peft==0.12.0", "accelerate==0.34.2", "numpy>=1.26,<3", "pillow>=10", "einops==0.8.1", "einops-exts==0.0.4", "sentencepiece>=0.2,<0.3", "protobuf>=4"]
+semantic = ["rouge-score==0.1.2", "bert-score==0.3.13", "transformers==4.44.2"]
+coco = ["pycocoevalcap==1.2"]
+
+[project.scripts]
+ccta-chat = "ccta_chat.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ccta_chat = ["integration/*.patch", "integration/*.json"]

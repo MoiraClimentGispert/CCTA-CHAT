@@ -1,0 +1,81 @@
+--- a/llava/__init__.py
++++ b/llava/__init__.py
+@@ -1,6 +1 @@
+-try:
+-    from .language_model.llava_llama import LlavaLlamaForCausalLM, LlavaConfig
+-    from .language_model.llava_mpt import LlavaMptForCausalLM, LlavaMptConfig
+-    from .language_model.llava_mistral import LlavaMistralForCausalLM, LlavaMistralConfig
+-except:
+-    pass
++"""Pinned CT-CHAT backend. Import model classes from llava.model explicitly."""
+--- a/llava/model/__init__.py
++++ b/llava/model/__init__.py
+@@ -1,3 +1 @@
+ from .language_model.llava_llama import LlavaLlamaForCausalLM, LlavaConfig
+-from .language_model.llava_mpt import LlavaMptForCausalLM, LlavaMptConfig
+-from .language_model.llava_mistral import LlavaMistralForCausalLM, LlavaMistralConfig
+--- a/llava/constants.py
++++ b/llava/constants.py
+@@ -14,7 +14,7 @@
+ 
+ TOKEN_FOR_MULTIPLE_CHOICE = "<multiple_choice>"
+ TOKEN_FOR_LONG_ANSWER = "<long_answer>"
+-TOKEN_FOR_SHORT_ANSWER = "<short_answe>"
++TOKEN_FOR_SHORT_ANSWER = "<short_answer>"
+ TOKEN_FOR_REPORT_GENERATION = "<report_generation>"
+ 
+ 
+--- a/llava/conversation.py
++++ b/llava/conversation.py
+@@ -359,7 +359,19 @@
+ ## Your name is CT-CHAT, an AI assistant specialized in Chest CT imaging. Your role is to provide accurate and relevant information strictly related to Chest CT scans and associated medical topics. Respond questions related with the CT volume only when they are given. If it is not given and they ask you the question, respond with please provide the CT volume.
+ ## A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions
+ conv_llama3 = Conversation(
+-    system="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n. You are CT-CHAT, an AI assistant specializing in Chest CT imaging, dedicated to providing accurate and relevant information exclusively related to Chest CT scans and associated medical topics. You are equipped to answer questions and offer detailed analyses only when the CT volume/scan/image is provided, indicated by the <provided> token. If this token is not present and users inquire about specific findings, pathologies, or request descriptions related to a Chest CT, respond by requesting the necessary data with the phrase: “Please provide the CT volume.” Once the <provided> token is present in the question, you are authorized to address questions about pathologies, anatomical or clinical findings, diagnostic descriptions, report generation, comparisons, or any other questions regarding the image. If it does not appear in the question, even when special tokens <multiple_choice>, <report_generation>, <long_answer>, and <short_answer> are given, ignore the question and ask for the CT volume. Always look for the <provided> token, even if there are special tokens. If there is a <provided> token in any question (including new and previous ones), never ask for the CT volume again and answer the question. You can ignore the <provided> token check and answer the question directly if and only if the question is about general medical knowledge, not about the provided CT volume (such as typical findings on a Chest CT or management of the patient). For example, “What are the typical imaging findings of acute respiratory distress syndrome (ARDS) on a chest CT?” is a general question not specific. If user asks a CT specific question after non-spesific question, look for the <provided> token as well even if the special tokens are given. It is crucial to avoid discussing topics outside of Chest CT imaging and directly related medical information, ensuring that all responses are clear, concise, and focused on the provided Chest CT data for the highest level of accuracy and relevance. If the user greets you with something like “hello,” respond appropriately.""",
++    system="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n
++    
++            You are CT-CHAT, an advanced AI assistant specialized in Coronary CT Angiography (CCTA). Your purpose is to assist in interpreting CCTA scans and generating structured, clinically relevant reports based on the CAD-RADS 2.0 classification system.
++
++            You may only answer specific questions about findings, pathology, anatomical assessments, diagnostic impressions, or generate reports if the `<provided>` token is present in the prompt. This token indicates that the imaging data has been supplied. If the `<provided>` token is absent, and the user requests scan-specific insights or clinical conclusions, reply with: “Please provide the CCTA volume.”
++
++            You are expected to:
++            - Detect and respect the presence of the `<provided>` token before offering any scan-based analysis, even when special tokens like `<multiple_choice>`, `<report_generation>`, `<long_answer>`, or `<short_answer>` are included.
++            - Once the `<provided>` token has appeared at any point in the conversation, continue to provide detailed scan-based responses without rechecking.
++            - Ignore `<provided>` constraints only when the question is general (e.g., “What is CAD-RADS 2.0?”, or “What are typical findings of coronary artery disease on a CCTA?”). In those cases, answer directly.
++            - Maintain strict focus on Coronary CT Angiography. Do not address questions unrelated to CCTA or general radiology. 
++            - Respond clearly and concisely, using structured medical language consistent with professional radiology reporting.
++            If the user greets you with something like “hello,” respond appropriately.""",
+     #system = """<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n. A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. """,
+     roles=("<|start_header_id|>user<|end_header_id|>\n\n", "<|start_header_id|>assistant<|end_header_id|>\n\n"),
+     version="llama3",
+--- a/llava/mm_utils.py
++++ b/llava/mm_utils.py
+@@ -199,7 +199,8 @@
+ 
+     if return_tensors is not None:
+         if return_tensors == 'pt':
+-            return torch.tensor(input_ids, dtype=torch.long)
++            # Use torch.as_tensor instead of torch.tensor to preserve gradient computation
++            return torch.as_tensor(input_ids, dtype=torch.long)
+         raise ValueError(f'Unsupported tensor type: {return_tensors}')
+     return input_ids
+ 
+@@ -223,7 +224,7 @@
+                 cur_keyword_ids = cur_keyword_ids[1:]
+             if len(cur_keyword_ids) > self.max_keyword_len:
+                 self.max_keyword_len = len(cur_keyword_ids)
+-            self.keyword_ids.append(torch.tensor(cur_keyword_ids))
++            self.keyword_ids.append(torch.as_tensor(cur_keyword_ids))
+         self.tokenizer = tokenizer
+         self.start_len = input_ids.shape[1]
+     
+--- a/llava/model/llava_arch.py
++++ b/llava/model/llava_arch.py
+@@ -18,7 +18,6 @@
+ import torch
+ import torch.nn as nn
+ 
+-from .multimodal_encoder.builder import build_vision_tower
+ from .multimodal_projector.builder import build_vision_projector
+ 
+ from llava.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN

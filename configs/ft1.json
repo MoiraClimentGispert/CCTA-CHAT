@@ -1,0 +1,13 @@
+{
+  "mode": "ft1",
+  "lora_rank": 64,
+  "lora_alpha": 16,
+  "lora_dropout": 0.05,
+  "learning_rate": 0.00002,
+  "warmup_ratio": 0.03,
+  "scheduler": "cosine",
+  "epochs": 3,
+  "batch_size": 2,
+  "gradient_accumulation": 4,
+  "model_max_length": 1280
+}

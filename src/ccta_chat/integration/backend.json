@@ -1,0 +1,16 @@
+{
+  "revision": "33c9b973bf1babb3b79b5ffd8ae45948e758a3f2",
+  "representation": "patch only; unmodified dependencies remain in separate upstream checkout",
+  "files": {
+    "llava/__init__.py": "61eb2e1de8b5a584aa748f040da71f81cfe0b54dc73dad1f692298d216ee8e99",
+    "llava/model/__init__.py": "8cc8903cfef88f0f628e90a9074f832275a3624cdfe5601115b00e501c6a2d9b",
+    "llava/constants.py": "2bb14dc173128d1ac2acc0be593f7bf1c15fe160d428c402fc2767eef6e7b2c4",
+    "llava/conversation.py": "7862714df230c976eb76add4848d230e6a78a5bac9915cb604300eb4cd9e741b",
+    "llava/mm_utils.py": "f034dde74a186d643070bf3ad8b56fc4fca5e2823da7ede3deb00029ffc3d50b",
+    "llava/model/llava_arch.py": "3d06b0fcf74d968aae3548d500a59c512cb6cd556a4ba9b7280a75218903a71e",
+    "llava/utils.py": "b51a3ef996597b7d8b7a54e280529985a7154992bd863209bdbc761b8b397102",
+    "llava/model/language_model/llava_llama.py": "5be4cb32f609a617da7e8c06dd2e6769e24ec928640249ddd10e03c1273362d1",
+    "llava/model/multimodal_projector/builder.py": "c37d6d380649d5f70401bacc80f2f9626fabd3da1251ce6e6fca1a174c936f65",
+    "llava/model/multimodal_projector/coca_attentional_pooler.py": "35eec6eb957ab2df11603e9f6c44f81ac1da7b5933783dbe243992e5ffbeebed"
+  }
+}

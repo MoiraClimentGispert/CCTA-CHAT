@@ -1,0 +1,3 @@
+* text=auto eol=lf
+# Unified-diff context intentionally retains upstream whitespace.
+src/ccta_chat/integration/*.patch -whitespace

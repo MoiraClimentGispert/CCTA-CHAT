@@ -1,0 +1,9 @@
+[
+  {"record_id": "marker-c", "scan_id": "phantom-c", "synthetic": true,
+   "turns": [{"turn_id": "0", "question": "Name the marker.", "answer": "Violet"}]},
+  {"record_id": "marker-a", "scan_id": "phantom-a", "synthetic": true,
+   "turns": [{"turn_id": "0", "question": "Name the marker.", "answer": "Amber amber"}]},
+  {"record_id": "dialogue-b", "scan_id": "phantom-b", "synthetic": true,
+   "turns": [{"turn_id": "1", "question": "Name the two shapes.", "answer": "Circle triangle"},
+             {"turn_id": "0", "question": "Name the two colours.", "answer": "Blue"}]}
+]
