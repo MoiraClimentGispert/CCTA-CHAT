@@ -1,8 +1,8 @@
 # Results
 
-The thesis compares CAD CT-CHAT FT1 and FT2 with pretrained CT-CHAT 8B and 70B. The historical evaluation contains **627 answers in 252 conversations**; clinical examples cover **two held-out scans**. The answers are not independent patient observations.
+I compared my two coronary CT adaptations, FT1 and FT2, with pretrained CT-CHAT 8B and 70B. The evaluation included **627 answers in 252 conversations**, with clinical examples from **two held-out scans**. The answer count reflects multiple questions and dialogue turns, not independent patients.
 
-## Historical comparison
+## Four-model comparison
 
 | Model | BLEU-1 | METEOR¹ | ROUGE-L | CIDEr | Saved LLM-judge mean / 10 |
 |---|---:|---:|---:|---:|---:|
@@ -11,9 +11,9 @@ The thesis compares CAD CT-CHAT FT1 and FT2 with pretrained CT-CHAT 8B and 70B. 
 | CT-CHAT 8B | 0.219 | 0.128 | 0.233 | 0.656 | 5.526 |
 | CT-CHAT 70B | 0.234 | 0.139 | 0.252 | 0.756 | 5.611 |
 
-BLEU-1, ROUGE-L and CIDEr were recalculated from saved predictions and references and reproduce the thesis table. Judge means aggregate stored scores; the judge was not rerun. ¹METEOR is thesis-reported. The original FT1 prediction variant is the historical result anchor; a separate later prediction variant is not substituted into this table.
+The FT1 scores were recalculated from the predictions used in the thesis. BLEU-1, ROUGE-L and CIDEr were recalculated for all four models and reproduced the thesis table. Judge means summarize the stored scores; the judge was not rerun. ¹METEOR is thesis-reported.
 
-FT1 leads on these language metrics. This within-study comparison does not isolate a causal effect of adapter merging from the other training and inference settings.
+FT1 scored highest on these language metrics. The comparison does not isolate the effect of adapter merging from differences in the other training and inference settings.
 
 ## Prompt-alignment sensitivity
 
@@ -26,7 +26,7 @@ Fourteen single-turn short-answer prompts differed between saved predictions and
 | Reference-sufficient | 617 | Retain the four differing prompts with sufficient references |
 | Local-reference sensitivity | 619 | Also substitute two references available for the same question and scan; exclude the remaining eight |
 
-The substitutions are a sensitivity analysis, not a recovered earlier reference version. No row-level clinical comparisons are published.
+For the 619-answer analysis, the two replacement references came from the same scan and question elsewhere in the evaluation set. These substitutions test sensitivity to the pairing; they do not change the reported thesis scores.
 
 | Model | 613: BLEU-1 / ROUGE-L / CIDEr | 617: BLEU-1 / ROUGE-L / CIDEr | 619: BLEU-1 / ROUGE-L / CIDEr |
 |---|---|---|---|
@@ -35,7 +35,7 @@ The substitutions are a sensitivity analysis, not a recovered earlier reference 
 | CT-CHAT 8B | 0.2185 / 0.2359 / 0.6688 | 0.2186 / 0.2366 / 0.6658 | 0.2187 / 0.2373 / 0.6647 |
 | CT-CHAT 70B | 0.2334 / 0.2559 / 0.7709 | 0.2336 / 0.2558 / 0.7668 | 0.2339 / 0.2555 / 0.7647 |
 
-**FT1 remains first on recalculated BLEU-1, ROUGE-L and CIDEr in all three subsets.** CIDEr document frequencies were recomputed for each subset. These subsets remove short-answer items, so their task mix differs from the full corpus. Historical judge means for modified reference pairs are not presented as newly judged scores.
+**FT1 remained first on recalculated BLEU-1, ROUGE-L and CIDEr in all three subsets.** CIDEr document frequencies were recomputed for each subset. These subsets remove short-answer items, so their task mix differs from the full corpus. The altered reference pairs were not sent back to the judge.
 
 ## Answer-only semantic comparison
 
@@ -48,14 +48,18 @@ The historical semantic evaluator serialized whole records, including shared que
 | CT-CHAT 8B | 0.5305 | 0.2872 | 0.2754 | 0.8907 |
 | CT-CHAT 70B | 0.5273 | 0.2791 | 0.2939 | 0.8937 |
 
-Record-level answer-only scoring concatenates assistant answers within each conversation before macro-averaging 252 scores. Turn-level scoring macro-averages 627 answers, giving longer dialogues more influence. BERTScore also truncates long inputs at its model limit. These values are language similarity, not clinical accuracy. The maintained evaluator independently matches all four known token-F1 aggregates on the 613-answer prompt-identical subset.
+Record-level answer-only scoring concatenates assistant answers within each conversation before macro-averaging 252 scores. Turn-level scoring macro-averages 627 answers, giving longer dialogues more influence. BERTScore also truncates long inputs at its model limit. These values are language similarity, not clinical accuracy. The public evaluator also reproduced the token-F1 aggregates for all four models on the 613-answer prompt-identical subset.
 
 ## Specialist report review
 
-Recovered presentation/quality means are **4.2/5 for FT1** and **2.4/5 for each comparator**, using five criteria and two scoring-sheet sets. The scored examples used different prompts and scan combinations; this was not a controlled same-case comparison. The quality ratings are distinct from correctness judgments. Hallucinations and omissions remained in the generated reports.
+The specialist presentation/quality ratings averaged **4.2/5 for FT1** and **2.4/5 for each comparator**, using five criteria and two scoring-sheet sets. The scored examples used different prompts and scan combinations, so this was not a controlled same-case comparison. Those quality ratings were distinct from judgments of clinical correctness. The reports still contained hallucinations and omissions.
+
+## Qualitative example
+
+In Figure 10 of my thesis (p. 35), FT1 reported minimal narrowing in the left anterior descending artery. It also reported 1–24% narrowing in the left main, where the cardiologist found no lesion.
 
 ## Interpretation
 
-The cohort covers a small set of scans and training disease grades. Repeated conversational answers do not expand the number of independent patients. The study supports a comparison of response quality within this dataset; it does not establish broad generalization, intermediate-grade performance or clinical readiness. Full-scale re-evaluation of a model release is a separate experiment from reproducing aggregate scores from saved responses.
+I trained on a small cohort concentrated at two disease grades. The results support a comparison of response quality within this dataset, but they do not establish performance across a broader population or intermediate disease grades. The report examples and specialist review also showed that language scores alone were insufficient to judge clinical correctness.
 
-Source: Moira Climent's bachelor’s thesis, *Toward Specialized Med-VLMs: A Vision-Language Approach to Coronary Artery Disease* (2025), quantitative evaluation and specialist review, with subsequent recalculation and prompt-alignment checks on the saved evaluation artifacts. All tables here contain aggregate results only. The [quickstart](../README.md#run-the-evaluation-example) uses an independently authored synthetic fixture and does not reproduce these numbers.
+Source: Moira Climent Gispert. *Toward Specialized Med-VLMs: A Vision-Language Approach to Coronary Artery Disease.* Bachelor’s thesis, Universitat Pompeu Fabra, 2025. Tables 1–3 report the quantitative comparison and specialist ratings; Figure 10 (printed p. 35; PDF page 43) shows the qualitative example. The tables above also include subsequent recalculation and prompt-alignment checks on the saved answers. The [quickstart](../README.md#try-the-evaluator) uses a synthetic example and does not reproduce the thesis scores.

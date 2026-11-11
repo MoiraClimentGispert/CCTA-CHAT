@@ -1,18 +1,26 @@
-# Methods and implementation
+# Methods
 
-CCTA-CHAT adapts the chest-CT workflow of CT-CHAT to coronary CT angiography. The thesis compared two LoRA adaptation strategies and evaluated coronary disease questions and generated reports. This maintained release provides preparation, encoding, model integration and evaluation commands; thesis results are reported separately on the [results page](results.md).
+I adapted CT-CHAT to answer coronary CT angiography questions and generate reports. The pipeline combines clinical and literature-based instruction data with cached scan features, then trains LoRA adapters and the visual projector. This page follows that data flow and explains the commands for each step.
 
 ## Study and supervision
 
-The cohort comprised ten CCTA examinations from Hospital de la Santa Creu i Sant Pau: eight training cases and two held-out cases. The training set contained four CAD-RADS 1 and four CAD-RADS 5 cases. Clinical supervision came from specialist reports and structured annotations, initially comprising 865 attributes. Spanish source material was cleaned and converted into English instruction data.
+I used ten CCTA examinations from Hospital de la Santa Creu i Sant Pau: eight for training and two held out for evaluation. The training set contained four CAD-RADS 1 and four CAD-RADS 5 cases. I prepared English supervision from Spanish specialist reports and structured annotations, initially comprising 865 attributes.
 
-Instruction tasks included short answers, multiple-choice questions, free responses, descriptions, multi-turn conversations and structured report generation. Literature supplied general theoretical questions. The thesis reports 56,688 theoretical QA pairs from 10,000 articles; these are reported corpus totals rather than counts of independently verified image examples in this public package.
+I combined short answers, multiple-choice questions, free responses, descriptions, multi-turn conversations and structured report generation with general theoretical questions from the literature. The thesis reported 56,688 theoretical QA pairs from 10,000 articles; those literature pairs are distinct from the image-linked clinical examples.
 
-`ccta-chat prepare` accepts curated English QA with explicit `record_id`, `scan_id`, `split`, `task` and turn IDs. It preserves IDs and adds the CT-CHAT task marker. For image records it inserts **one `<image>` token** and `<provided>` at the first turn. `<image>` inserts projected visual features; `<provided>` is an instruction in the conversation template. Text-only literature records use `image: null` and retain `article_id`. No patient scan is randomly assigned to literature.
+## Data preparation
+
+`ccta-chat prepare` accepts curated English QA with explicit `record_id`, `scan_id`, `split`, `task` and turn IDs. It preserves IDs and adds the CT-CHAT task marker. For image records it inserts **one `<image>` token** and `<provided>` at the first turn. `<image>` inserts projected visual features; `<provided>` is an instruction in the conversation template. Text-only literature records use `image: null` and retain `article_id`.
 
 The supported tasks are `short_answer`, `long_answer`, `multiple_choice` and `report_generation`; descriptions, free responses and conversations use the long-answer format. The example JSON files illustrate the field structure. Add an `image` filename only when a corresponding cached feature exists. Preparation assumes the input QA has already been checked against its source; schema validation does not verify medical correctness.
 
-The article path is explicit:
+Try preparation with the synthetic example:
+
+```bash
+ccta-chat prepare --input examples/references.json --output outputs/prepared.json
+```
+
+To prepare literature QA:
 
 ```bash
 ccta-chat retrieve-articles --query 'coronary CT angiography CAD-RADS' --limit 10 --split train --output outputs/articles.json
@@ -24,37 +32,52 @@ Retrieval uses PMC, preserves article IDs and permission text, and extracts nest
 
 ## Cached visual features
 
-CT-CLIP's CT-ViT encoder runs offline. The selected CCTA profile uses target spacing **0.35 × 0.35 × 0.30 mm**, clips to **−100…800 HU**, maps the window to **[0,1]**, and centre-crops/pads to **480 × 480 × 240 voxels**, using −1 padding. Orientation follows the NIfTI voxel axes. The public encoder reads header spacing by default and permits an explicit three-axis override. Nibabel applies stored NIfTI intensity scaling once.
+CT-CLIP's CT-ViT encoder runs offline. The CCTA preprocessing profile uses target spacing **0.35 × 0.35 × 0.30 mm**, clips to **−100…800 HU**, maps the window to **[0,1]**, and centre-crops/pads to **480 × 480 × 240 voxels**, using −1 padding. Orientation follows the NIfTI voxel axes. The encoder reads header spacing by default and accepts a three-axis override. Nibabel applies stored NIfTI intensity scaling once.
 
 The encoder writes NPZ key `arr` with shape `[1,Z,X,Y,512]`. Training strips the leading singleton and batches features as `[B,Z,X,Y,512]`. CT-CHAT flattens the spatial/temporal grid, applies attention pooling to 256 queries and an MLP projector, then inserts the resulting visual tokens into the LLaMA input. Image-free prompts insert no visual tokens. **An image filename by itself does not insert visual features.**
 
 Each encoded file has a provenance sidecar containing input, encoder-weight and source fingerprints, spacing, preprocessing and output hash. `--reuse` requires all of these to match. A missing or mismatched sidecar produces an error. The native crop is not an anatomical localization method; check scan coverage before clinical experiments.
 
-## Intended FT1 and FT2 configurations
+## Fine-tuning strategies
 
-![Intended FT1 and FT2: both tune the projector; FT1 trains a fresh CAD adapter over a merged CT-CHAT base, while FT2 continues the existing CT-CHAT adapter.](figures/adaptation.svg)
+I compared two ways to adapt CT-CHAT while training the projector that connects scan features to the language model.
 
-*Intended configurations. Generic schematic recreated for CCTA-CHAT from the thesis training diagrams; no clinical imagery is included.*
+### FT1: train a fresh adapter
 
-| Strategy | Language-model initialization | Trainable components |
+FT1 merges the original CT-CHAT adapter into the LLaMA base and freezes that combined model. It then trains a fresh CAD LoRA adapter alongside the projector. The image encoder stays frozen and supplies cached features.
+
+[![FT1 thesis diagram: a frozen CT-CLIP image encoder and frozen CT-CHAT baseline, including its original adapter, feed a trainable projector and fresh CAD LoRA adapter.](figures/training-ft1.png)](figures/training-ft1.png)
+
+*From Moira Climent Gispert’s bachelor’s thesis (2025).*
+
+### FT2: continue an existing adapter
+
+FT2 continues training an existing CT-CHAT LoRA adapter on coronary CT angiography data. The training code loads the supplied adapter, preserves its rank and scaling, and updates it alongside the visual projector. The default configuration uses a cosine learning-rate schedule with warmup over the first 3% of training steps.
+
+[![FT2 thesis diagram: the CT-CLIP encoder and LLaMA base remain frozen; the existing CT-CHAT LoRA adapter and visual projector continue training.](figures/training-ft2.png)](figures/training-ft2.png)
+
+*From Moira Climent Gispert’s bachelor’s thesis (2025).*
+
+The pretrained CT-CHAT model is hosted through the CT-RATE Hugging Face repository. In the software, FT2 loads the adapter with `is_trainable=True` and checks its tensor keys, shapes and values. Its saved configuration determines the rank and scaling; requesting a different rank produces an error.
+
+Both strategies enable the LoRA and projector parameters after freezing the rest of the language model. The trainer supervises assistant answers and masks prompt tokens. It reserves space for the 256 projected image tokens and preserves the positions of image and text-only records within a batch.
+
+### Public configuration defaults
+
+| Setting | FT1 (`configs/ft1.json`) | FT2 (`configs/ft2.json`) |
 |---|---|---|
-| FT1 | LLaMA with the pretrained CT-CHAT adapter already merged; create a fresh CAD LoRA | Fresh CAD LoRA + visual projector |
-| FT2 | LLaMA base and the existing pretrained CT-CHAT LoRA loaded as a trainable adapter | Existing CT-CHAT LoRA + visual projector |
+| Adapter initialization | Fresh CAD adapter over a merged CT-CHAT base | Existing CT-CHAT adapter |
+| LoRA rank | 64 | Preserved from the supplied adapter |
+| LoRA alpha / scaling | 16 | Preserved from the supplied adapter |
+| LoRA dropout | 0.05 | Preserved from the supplied adapter |
+| Trainable components | Fresh adapter + projector | Supplied adapter + projector |
+| Learning rate | 2e-5 | 2e-5 |
+| Scheduler / warmup | Cosine / first 3% of steps | Cosine / first 3% of steps |
+| Epochs | 3 | 3 |
+| Batch size per device / gradient accumulation | 2 / 4 | 2 / 4 |
+| Sequence limit | 1280 | 1280 |
 
-The author obtained pretrained CT-CHAT resources through the CT-RATE Hugging Face repository. FT2 was designed to continue the existing CT-CHAT adapter. **Adapter initialization, learning-rate warmup and Trainer resume are separate controls.** The maintained FT2 implementation restores an existing adapter with `is_trainable=True`, checks tensor keys/shapes/values and preserves its saved rank and scaling. It never silently converts rank 128 into rank 64. A requested rank that differs from the supplied adapter is rejected.
-
-Both release strategies explicitly enable LoRA and projector parameters after freezing the remaining language model. CT-ViT remains outside the training graph. The trainer supervises assistant spans within each conversation, masks prompts, reserves space for the 256 image tokens and preserves mixed text/image batch positions. Saved initialization metadata records artifact hashes, trainable counts, scheduler settings and the explicit resume choice.
-
-| Setting | Thesis/template setting | Maintained configuration |
-|---|---|---|
-| CAD LoRA | Rank 64, alpha 16; dropout 0.05 | FT1 uses 64/16/0.05; FT2 reads the supplied adapter config |
-| Epochs / batch / accumulation | 3 / 2 per device / 4 | 3 / 2 / 4 |
-| LR schedule / warmup | Cosine / launcher warmup ratio 0.03 | Cosine / 0.03 |
-| Learning rate | Thesis and available templates: 2e-5 | 2e-5 |
-| Completed candidate job logs | Peak LR 5e-5 for jobs 359841 and 359842 | Configurable; current configs do not substitute for job logs |
-| Sequence limit | Available FT1 template inherits 512; FT2 specifies 1280 | Explicit 1280 for both strategies |
-
-The completed logs show an initial LR ramp and three-epoch completion. The numeric warmup ratio 0.03 is attributed to the launcher. The experiments ran on Pirineus (Slurm). Training-run metadata and current release validation are different evidence from the saved thesis predictions; [results](results.md) identifies how each reported metric was obtained.
+These are the defaults consumed by the public training commands. The [results page](results.md) reports the measured thesis comparison. Each new run saves its effective settings, model-file hashes and trainable parameter counts.
 
 ## Use the model integration
 
@@ -80,11 +103,11 @@ ccta-chat encode --input /path/to/volume.nii.gz --output outputs/volume.npz \
   --encoder-weights /path/to/clip_visual_encoder.pth
 ```
 
-This pins the release dependency; it is not a statement of the historical installation revision. The explicit source directory must contain `transformer_maskgit/__init__.py`. `--spacing X Y Z` overrides header spacing. Encoding requires sufficient memory for the resampled volume and CT-ViT.
+The source directory must contain `transformer_maskgit/__init__.py`. `--spacing X Y Z` overrides header spacing. Encoding requires sufficient memory for the resampled volume and CT-ViT.
 
-Training and inference require these local artifacts:
+Training and inference require the following local files:
 
-| Argument | Artifact |
+| Argument | Required files |
 |---|---|
 | `--base` | Full LLaMA/CT-CHAT base directory with matching config and weight shards; FT1 uses an already merged CT-CHAT base |
 | `--tokenizer` | Matching tokenizer, including CT-CHAT task tokens and the same number of embedding rows as the base |
@@ -117,11 +140,15 @@ ccta-chat infer --backend /path/to/CT-CHAT --base /path/to/llama-base \
   --input /path/to/questions.json --output outputs/answers.json
 ```
 
-For FT1, use `configs/ft1.json`, supply the merged base and omit `--adapter`. For a deliberate Trainer restart, supply `--resume /path/to/checkpoint-N`; no output-directory auto-resume occurs. For CPU development, select `--device cpu --dtype float32`. Model commands use local artifacts only. Inference accepts the same ID/turn schema as the example, with optional `image` filenames and no pre-inserted markers. Generated output retains original question text and IDs; generation is deterministic and passes an attention mask.
+For FT1, use `configs/ft1.json`, supply the merged base and omit `--adapter`. Use `--resume /path/to/checkpoint-N` to restart a run with its saved adapter, projector, optimizer and scheduler state. For CPU development, select `--device cpu --dtype float32`. Model commands load local files only. Inference accepts the same ID/turn schema as the example, with optional `image` filenames and no pre-inserted markers. Generated output retains original question text and IDs; generation is deterministic and passes an attention mask.
 
 ## Evaluation protocols
 
-The default `evaluate` command aligns by record/turn ID, verifies scan identity and exact prompt text, and scores assistant answers. It fails rather than silently pairing conflicting rows. Lowercase whitespace-token **sets** define precision/recall/F1; punctuation is retained. The score is a macro-average across turns.
+The default `evaluate` command matches record and turn IDs, verifies scan identity and exact prompt text, and scores assistant answers only. Missing IDs, duplicate IDs or conflicting questions produce an error before scoring.
+
+The synthetic example contains a short answer, a two-turn dialogue and the same question under two different synthetic scan IDs. Its predictions are deliberately reordered. This checks that alignment follows IDs rather than file order or question wording.
+
+Token precision, recall and F1 use lowercase whitespace-token **sets**: repeated words count once, case is ignored and punctuation is retained. Each metric is calculated for each answer and then macro-averaged across turns. The four-answer example gives token F1 **0.791667**; it is a software demonstration, separate from the thesis scores.
 
 Optional scorers:
 
@@ -132,13 +159,15 @@ ccta-chat semantic --references /path/to/references.json --predictions /path/to/
 ccta-chat judge --references /path/to/references.json --predictions /path/to/predictions.json --model /path/to/local/judge --output outputs/judge.json
 ```
 
-COCO evaluation computes BLEU-1, ROUGE-L and CIDEr. METEOR on the results page is thesis-reported; this command does not silently replace its scorer. Semantic evaluation produces nine ROUGE-L/token/BERT columns and requires a local RoBERTa-large model (layer 17, no IDF or baseline rescaling). `--legacy-record` explicitly selects the historical **positional, whole-record** extraction and original nested schemas for protocol comparison. The maintained answer-only mode uses the public ID schema. Historical workstation evaluation was run from the outer evaluation directory; the release preserves the nine-column protocol and omits the later heuristic GREEN extension.
+COCO evaluation computes BLEU-1, ROUGE-L and CIDEr. METEOR on the results page is thesis-reported and is not computed by this command. Semantic evaluation produces nine ROUGE-L/token/BERT columns and requires a local RoBERTa-large model (layer 17, no IDF or baseline rescaling). `--legacy-record` explicitly selects the historical **positional, whole-record** extraction and original nested schemas for protocol comparison. The answer-only mode uses the ID schema shown in the example. Neither mode computes GREEN.
 
-The release judge saves full question/reference/answer triplets, model-config fingerprint and rationale. It is a new judging run, separate from aggregating the thesis's stored judge scores.
+The `judge` command saves each question, reference, answer and rationale together with the judge model’s configuration hash. Running it produces new scores; the thesis judge means on the results page summarize the stored scores from that study.
 
-## Validation scope
+## Tests
 
-The clean CPU quickstart and preparation/alignment checks run without model dependencies. The optional model suite uses random tiny LLaMA weights and synthetic cached features to check image-token insertion, visual-feature influence, mixed batches, nonzero LoRA/projector gradients and exact adapter restoration. A two-strategy CPU training-and-inference smoke run also completed with synthetic artifacts. These checks establish software behavior; they do not measure clinical performance.
+A synthetic training test checks that FT2 loads the supplied adapter weights exactly and that both the adapter and the projector receive gradients.
+
+The CPU tests check evaluation alignment and data preparation without model dependencies. Optional tests use a small randomly initialized LLaMA model and synthetic scan features to check image-token insertion, the effect of those features on model output, mixed batches and cache reuse. Both FT1 and FT2 also completed a synthetic CPU training-and-inference test. These tests verify the public code’s behavior; clinical performance is reported separately in Results.
 
 Run optional tests after integration:
 
@@ -146,4 +175,4 @@ Run optional tests after integration:
 CCTA_CHAT_BACKEND=/path/to/CT-CHAT python -m unittest discover -s tests -v
 ```
 
-Full-scale encoding, generation, judging and training require the artifact sets described above. The [README](../README.md) quickstart remains independent of those commands.
+The [README example](../README.md#try-the-evaluator) runs without the optional model files or dependencies.

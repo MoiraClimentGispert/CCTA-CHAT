@@ -1,22 +1,20 @@
 # CCTA-CHAT
 
-**Coronary CT angiography question answering and report generation.**
+**Moira Climent Gispert · Bachelor's thesis · Universitat Pompeu Fabra · 2025**
 
-CCTA-CHAT is Moira Climent's bachelor's thesis project adapting [CT-CHAT](docs/upstream.md) to coronary CT angiography (CCTA). It explores whether domain-specific instruction tuning improves answers about coronary anatomy, stenosis and CAD-RADS. The study used eight training scans and two held-out scans from Hospital de la Santa Creu i Sant Pau.
+For my bachelor’s thesis at Universitat Pompeu Fabra, I wanted to see how well a model trained on chest CT could answer questions about individual coronary arteries. I adapted [CT-CHAT](docs/upstream.md) for coronary CT angiography using specialist reports and structured annotations from Hospital de la Santa Creu i Sant Pau. I used eight scans for training and two held-out scans for evaluation.
 
-![Four-stage workflow: CCTA study data, instruction preparation, CT-CHAT adaptation and evaluation.](docs/figures/workflow.svg)
+[![Four-stage thesis workflow: acquisition of CCTA volumes, reports and structured annotations; dataset curation; CT-CHAT fine-tuning; and evaluation comparing a model answer with the reference answer.](docs/figures/workflow.png)](docs/figures/workflow.png)
 
-*A schematic of the thesis workflow, recreated with generic blocks by the project author. CT-CLIP supplies the CT-ViT encoder; CT-CHAT supplies the multimodal model.*
+*Adapted from Moira Climent Gispert’s thesis figure (2025).* [Open the full-size workflow.](docs/figures/workflow.png)
 
-The project contributes:
+I compared two ways to fine-tune the model. **FT1** merges the original CT-CHAT adapter into the base model and trains a new adapter for coronary CT. **FT2** continues training an existing CT-CHAT adapter. Both strategies also train the projector that connects the scan features to the language model.
 
-- **CCTA-specific supervision:** image-linked clinical questions, structured report tasks and text-only literature QA, with explicit task markers.
-- **Two adaptation strategies:** a fresh CAD adapter over a merged CT-CHAT base (FT1), and continued training of the existing CT-CHAT adapter (FT2), together with the visual projector.
-- **A comparison across four models:** language metrics, semantic similarity, LLM judging and specialist report review, with alignment sensitivity checks.
+**FT1 scored highest on BLEU-1, ROUGE-L and CIDEr across 627 answers in 252 conversations.** Reviewing the generated reports showed why those scores tell only part of the story. In one example, the model identified minimal narrowing in the left anterior descending artery but also reported a left-main lesion where the cardiologist found none. I discuss this finding from Figure 10 of my thesis in the [case discussion](docs/results.md#qualitative-example). The [results page](docs/results.md) compares all four models.
 
-## Run the evaluation example
+## Try the evaluator
 
-Python 3.10+ and a CPU are sufficient. Run these commands from the repository root:
+You can try the evaluator on four synthetic answers using Python and a CPU. Use Python 3.10 or later. The clinical data and evaluated CAD weights are unavailable in this release.
 
 ```bash
 python3 -m venv .venv
@@ -37,27 +35,20 @@ Aggregation: macro-average over turns (lowercase whitespace-token sets)
 Synthetic fixture: illustrative; not thesis results.
 ```
 
-The independently authored fixture uses colours and shapes. It includes a short answer, a two-turn dialogue and the same question under two different synthetic scan IDs. Predictions are deliberately reordered: alignment uses record and turn IDs, verifies scan identity and checks prompt equality. Duplicate IDs, missing answers and conflicting prompts fail with a clear error.
+The evaluator matches each prediction to its question by ID and scores the answer text.
 
-The score compares **assistant answers only**. Repeated words count once; case is ignored; punctuation is preserved. Precision, recall and F1 are averaged across the four turns. These illustrative values are separate from the thesis results.
+Read [Methods](docs/methods.md) for data preparation, scan features, FT1/FT2 and model commands; [Results](docs/results.md) for the four-model comparison and sensitivity analyses; and [the upstream change map](docs/upstream.md) for what CT-CHAT supplied and what I changed for CCTA.
 
-The evaluated CAD weights and clinical data are not distributed in this release. Optional [preparation, encoding, training and inference commands](docs/methods.md#use-the-model-integration) accept locally supplied artifacts; the quickstart needs none of them and downloads no model.
-
-## Headline result
-
-**FT1 achieved the highest language scores in the thesis comparison: BLEU-1 0.280, ROUGE-L 0.297 and CIDEr 1.009 across 627 answers in 252 conversations.** Clinical examples cover two held-out scans. FT1 remained first in the prompt-alignment sensitivity analyses. These results describe this study; language similarity does not establish clinical accuracy or performance on a broader population.
-
-Read the [methods and intended FT1/FT2 configurations](docs/methods.md), [results and sensitivity analyses](docs/results.md), and [changes relative to CT-CHAT](docs/upstream.md).
-
-## Develop
+## Tests
 
 ```bash
 python -m unittest discover -s tests -v
-ccta-chat prepare --input examples/references.json --output outputs/prepared.json
 ```
 
-The base install has no runtime dependencies. Optional dependencies are defined once in `pyproject.toml`; Python 3.11 is recommended for the pinned model integration. CPU tests exercise alignment and preparation. Optional tests exercise synthetic feature insertion, projector/LoRA gradients and adapter restoration without downloading weights.
+The base install has no runtime dependencies. Tests cover evaluation alignment and data preparation, with optional synthetic model checks described in [Methods](docs/methods.md#tests). Python 3.11 is recommended for the optional model dependencies in `pyproject.toml`.
 
-## Credits and use
+## Credits
 
-CT-CHAT and CT-CLIP were developed by Hamamci and colleagues. Shared model machinery is pinned to CT-CHAT commit [`33c9b97`](https://github.com/ibrahimethemhamamci/CT-CHAT/tree/33c9b973bf1babb3b79b5ffd8ae45948e758a3f2); the CCTA adaptation and maintained evaluation package are presented here as a standalone project. See the [upstream map](docs/upstream.md) and [third-party notices](THIRD_PARTY_NOTICES.md) for attribution and license scope.
+My work builds on CT-CHAT and CT-CLIP by Hamamci and colleagues. The shared model code is pinned to CT-CHAT commit [`33c9b97`](https://github.com/ibrahimethemhamamci/CT-CHAT/tree/33c9b973bf1babb3b79b5ffd8ae45948e758a3f2). See the [upstream credits](docs/upstream.md#credits-and-source-figures) and [third-party notices](THIRD_PARTY_NOTICES.md).
+
+Moira Climent Gispert. *Toward Specialized Med-VLMs: A Vision-Language Approach to Coronary Artery Disease.* Bachelor’s thesis, Universitat Pompeu Fabra, 2025.

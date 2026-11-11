@@ -2,37 +2,41 @@
 
 The starting point is [CT-CHAT, commit `33c9b973bf1babb3b79b5ffd8ae45948e758a3f2`](https://github.com/ibrahimethemhamamci/CT-CHAT/tree/33c9b973bf1babb3b79b5ffd8ae45948e758a3f2), developed by Hamamci and colleagues. CT-CHAT contributes the pretrained chest-CT workflow and multimodal model; CT-CLIP contributes its CT-ViT visual encoder. CT-RATE is their chest-CT dataset and a hosting location for model artifacts. The CCTA thesis cohort is a separate study.
 
-This standalone repository contains the CCTA adaptation and maintained interfaces. Shared model machinery stays in a pinned upstream checkout. Each modification is represented once: either in the small package or in the packaged [integration patch](../src/ccta_chat/integration/ctchat.patch). No upstream history or duplicate model source tree is imported.
+I used CT-CHAT’s model architecture as the starting point and adapted the data, prompts and fine-tuning workflow for coronary CT. This repository packages the preparation, training, inference and evaluation commands. Shared model code stays in a pinned upstream checkout, with changes supplied by the [integration patch](../src/ccta_chat/integration/ctchat.patch).
 
 ## Component change map
 
-| Upstream path or behavior | Public path | Change and purpose | Origin |
+| What CT-CHAT supplied | CCTA-CHAT path | What changed and why | When |
 |---|---|---|---|
-| Chest-CT tasks and supervision | `src/ccta_chat/data.py` | CCTA task types and marked image conversations; literature remains text-only | Thesis adaptation; IDs, split/article provenance and validation maintained for release |
-| Literature preparation additions | `data.py`, `generation.py` | Explicit PMC query, complete nested XML text, title + 4,000 body characters and five QA pairs; local-model JSON generation | Thesis workflow; extraction, schema and provenance cleanup for release |
-| `llava/serve/encode_script.py` chest preprocessing | `src/ccta_chat/encoding.py` | CCTA 0.35/0.35/0.30-mm spacing, −100…800 HU, [0,1] normalization and 480×480×240 crop | Thesis CCTA variant; header spacing, native-axis documentation and fingerprints added for release |
-| Batch loop and skip-existing variant | `encoding.py`, `encode --reuse` | Reuse only when input/source/encoder/preprocessing/output fingerprints agree | Release maintenance of batch reuse behavior |
-| `llava/conversation.py` chest system prompt | `integration/ctchat.patch` → same upstream path | CCTA and CAD-RADS conversation template | Thesis adaptation |
-| `llava/constants.py` short-answer marker | Same patch → same upstream path | Consistent `<short_answer>` spelling | CCTA source variant retained in release; tokenizer compatibility is checked |
-| `llava/train/train.py`, entry point and trainer | `src/ccta_chat/training.py`, `model.py`, `configs/ft1.json`, `configs/ft2.json` | Compact cached-feature trainer; explicit fresh/continued LoRA initialization, assistant-span masking, LoRA + projector trainability, cosine/warmup and explicit resume | Thesis strategies; initialization checks, mixed batches, shared limits and run manifests maintained for release |
-| `llava/model/builder.py` and merge helpers | `src/ccta_chat/model.py`, `merge-base` | Explicit local base/adapter/projector loading and merged-base export; normalize projector prefixes, require full key/shape coverage, verify FT2 tensor restoration | Thesis integration approach; consolidated loader and artifact checks for release |
-| `llava/serve/ctchat_validation_llama.py` | `model.py`, `infer` | Image and text-only inference, deterministic generation, attention masks, stable record/turn IDs and configurable outputs | Thesis validation workflow; maintained IO and provenance |
-| `llava/model/llava_arch.py` cached features | Patch → same upstream path | Remove inactive live-tower import; retain cached-feature insertion and projector path | Release import cleanup; no live-tower tuning is exposed |
-| `llava/__init__.py`, `llava/model/__init__.py` | Patch → same upstream paths | Correct package entry point; import only supported LLaMA backend | Release import cleanup |
-| `llava/mm_utils.py` token construction | Patch → same upstream path | Retain selected `as_tensor` construction for token IDs | Retained source variant; integer IDs are not a gradient fix |
-| Local COCO metric additions | `src/ccta_chat/evaluation.py`, `coco` | BLEU-1/ROUGE-L/CIDEr definitions, with ID alignment and explicit denominator | Thesis evaluation; maintained alignment and optional dependencies |
-| Nine-column semantic evaluator | `evaluation.py`, `semantic` | Explicit whole-record legacy profile plus revised answer-only profile; omit heuristic GREEN | Historical protocol; maintained extraction/alignment and local-model control |
-| LLM judge and aggregate analysis | `generation.py`, `judge`; [results](results.md) | Preserve full triplets for new judging and report stored historical score means separately | Thesis evaluation; maintained reproducibility |
-| **Unchanged:** `llava/model/language_model/llava_llama.py`, `multimodal_projector/builder.py`, `coca_attentional_pooler.py` | Separate pinned checkout; hashes in `integration/backend.json` | CT-CHAT's LLaMA wrapper, attention pool and MLP projector are used as provided | **Upstream CT-CHAT/LLaVA machinery** |
+| Chest-CT tasks and supervision | `data.py`, `prepare` | Coronary questions and report tasks, image/task markers and text-only literature | Thesis adaptation; IDs, splits and validation added to the public code |
+| Literature preparation scripts | `data.py`, `generation.py` | PMC retrieval and five QA pairs from each title and first 4,000 body characters; article IDs and complete XML text extraction | Thesis workflow; parsing and provenance improvements in the public code |
+| `llava/serve/encode_script.py` | `encoding.py` | CCTA spacing/window/crop; header spacing and cache fingerprints | Thesis CCTA profile; explicit preprocessing and reuse checks in the public code |
+| `llava/conversation.py`, `llava/constants.py` | [Integration patch](../src/ccta_chat/integration/ctchat.patch) | CCTA/CAD-RADS prompt and consistent short-answer marker | Thesis adaptation; tokenizer compatibility checks in the public code |
+| `llava/train/train.py`, entry point and trainer | `training.py`, `model.py`, `configs/` | FT1 fresh adapter or FT2 adapter continuation, with a trainable projector; explicit configuration, masking and mixed batches | Thesis strategies; loading checks and run metadata in the public code |
+| `llava/model/builder.py` and merge helpers | `model.py`, `merge-base` | Base/adapter/projector loading and merged-base export, with key/shape checks | Thesis integration; consolidated commands in the public code |
+| `llava/serve/ctchat_validation_llama.py` | `model.py`, `infer` | Image and text-only answers, attention masks, deterministic generation and stable record/turn IDs | Thesis validation workflow; configurable inputs and outputs in the public code |
+| `llava/model/llava_arch.py`, package imports and `llava/mm_utils.py` | Integration patch → the same upstream paths | Keep cached-feature insertion and token construction; remove inactive tower dependencies and correct LLaMA imports | Public integration cleanup |
+| COCO/semantic evaluation and LLM judging scripts | `evaluation.py`, `generation.py` | ID-aligned answer scoring, an explicit whole-record legacy mode and saved judge triplets; no heuristic GREEN score | Thesis evaluation; alignment and reproducibility improvements in the public code |
+| **Unchanged:** `llava/model/language_model/llava_llama.py`, `multimodal_projector/builder.py`, `coca_attentional_pooler.py` | Separate pinned checkout; hashes in `integration/backend.json` | CT-CHAT’s LLaMA wrapper, attention pool and MLP projector are used as provided | **Upstream CT-CHAT/LLaVA code** |
 
-The archive's broader clinical preprocessing and prompt experiments informed the thesis. The public preparation interface begins at curated English QA and does not include hospital files, translations of private records or training/prediction outputs. The maintained modules consolidate the selected operations instead of publishing every experimental script. The [methods](methods.md) document the input contracts and the release configurations; the [results](results.md) describe the historical evaluation separately.
+Package paths above are relative to `src/ccta_chat/`. The `prepare` command starts with curated English QA. [Methods](methods.md) explains the command inputs; [Results](results.md) presents the thesis comparison.
 
-## Integration and attribution
+## Pinned model integration
 
-`ccta-chat integrate` checks the exact upstream revision before applying the patch. The public commands verify fingerprints for the changed modules and unchanged transitive model dependencies. The package does not depend on an ambient `ctchat-llava` installation.
+`ccta-chat integrate` checks the exact upstream revision before applying the patch. The public commands verify fingerprints for the changed modules and unchanged transitive model dependencies. The commands import that checkout explicitly, so a different installed `ctchat-llava` package cannot silently replace it.
 
 The offline encoder resolves `CTViT` from [CT-CLIP](https://github.com/ibrahimethemhamamci/CT-CLIP/tree/a2a155c601987820433c01db69b64d701d3d229d), release dependency revision `a2a155c601987820433c01db69b64d701d3d229d`, using its `transformer_maskgit` package. This dependency is kept separate from the language-model backend.
 
-Credit the upstream CT-CHAT/CT-CLIP authors and cite *Developing Generalist Foundation Models from a Multimodal Dataset for 3D Computed Tomography* ([paper](https://arxiv.org/abs/2403.17834)). The LLaVA-derived files retain their original author notices. The thesis adaptation is by **Moira Climent**. New generic schematics were recreated for this release from the thesis workflow and intended training diagrams; no scan slices or patient text were copied.
+## Credits and source figures
+
+My work builds on CT-CHAT and CT-CLIP. Please credit their authors and cite *Developing Generalist Foundation Models from a Multimodal Dataset for 3D Computed Tomography* ([paper](https://arxiv.org/abs/2403.17834)). The LLaVA-derived files retain their original author notices. The thesis adaptation is by **Moira Climent Gispert**.
+
+| Displayed figure | Thesis source (2025) | Edits |
+|---|---|---|
+| README workflow | *Presentation Methodology pipeline.png* | Correct “Data Aquisition” to “Data acquisition”; keep the rest of the original figure |
+| Methods: FT1 | *Training approach 1.png* | None |
+| Methods: FT2 | *Training approach 2.png* | None |
+
+The training figures are stacked and link to their full-resolution images. Each caption credits the original or adapted thesis figure.
 
 See [third-party notices](../THIRD_PARTY_NOTICES.md), [CC BY-NC-SA 4.0](../LICENSE) and the retained [Apache 2.0 text](../APACHE-2.0.txt). The CT-CHAT publisher's license statement is preserved by reference to its [pinned README](https://github.com/ibrahimethemhamamci/CT-CHAT/blob/33c9b973bf1babb3b79b5ffd8ae45948e758a3f2/README.md#license). Model and dataset artifacts have their own terms and are not included in the code repository.
