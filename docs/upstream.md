@@ -25,18 +25,12 @@ Package paths above are relative to `src/ccta_chat/`. The `prepare` command star
 
 `ccta-chat integrate` checks the exact upstream revision before applying the patch. The public commands verify fingerprints for the changed modules and unchanged transitive model dependencies. The commands import that checkout explicitly, so a different installed `ctchat-llava` package cannot silently replace it.
 
-The offline encoder resolves `CTViT` from [CT-CLIP](https://github.com/ibrahimethemhamamci/CT-CLIP/tree/a2a155c601987820433c01db69b64d701d3d229d), release dependency revision `a2a155c601987820433c01db69b64d701d3d229d`, using its `transformer_maskgit` package. This dependency is kept separate from the language-model backend.
+The offline encoder resolves `CTViT` from [CT-CLIP](https://github.com/ibrahimethemhamamci/CT-CLIP/tree/a2a155c601987820433c01db69b64d701d3d229d), commit `a2a155c601987820433c01db69b64d701d3d229d`, using its `transformer_maskgit` package. This dependency is kept separate from the language-model backend.
 
-## Credits and source figures
+## Credits
 
-My work builds on CT-CHAT and CT-CLIP. Please credit their authors and cite *Developing Generalist Foundation Models from a Multimodal Dataset for 3D Computed Tomography* ([paper](https://arxiv.org/abs/2403.17834)). The LLaVA-derived files retain their original author notices. The thesis adaptation is by **Moira Climent Gispert**.
+CCTA-CHAT builds on CT-CHAT and CT-CLIP by Hamamci and colleagues. The workflow and training diagrams come from my 2025 bachelor’s thesis at Universitat Pompeu Fabra.
 
-| Displayed figure | Thesis source (2025) | Edits |
-|---|---|---|
-| README workflow | *Presentation Methodology pipeline.png* | Correct “Data Aquisition” to “Data acquisition”; keep the rest of the original figure |
-| Methods: FT1 | *Training approach 1.png* | None |
-| Methods: FT2 | *Training approach 2.png* | None |
-
-The training figures are stacked and link to their full-resolution images. Each caption credits the original or adapted thesis figure.
+Please cite *Developing Generalist Foundation Models from a Multimodal Dataset for 3D Computed Tomography* ([paper](https://arxiv.org/abs/2403.17834)). The LLaVA-derived files retain their original author notices.
 
 See [third-party notices](../THIRD_PARTY_NOTICES.md), [CC BY-NC-SA 4.0](../LICENSE) and the retained [Apache 2.0 text](../APACHE-2.0.txt). The CT-CHAT publisher's license statement is preserved by reference to its [pinned README](https://github.com/ibrahimethemhamamci/CT-CHAT/blob/33c9b973bf1babb3b79b5ffd8ae45948e758a3f2/README.md#license). Model and dataset artifacts have their own terms and are not included in the code repository.

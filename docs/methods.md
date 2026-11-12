@@ -48,7 +48,7 @@ FT1 merges the original CT-CHAT adapter into the LLaMA base and freezes that com
 
 [![FT1 thesis diagram: a frozen CT-CLIP image encoder and frozen CT-CHAT baseline, including its original adapter, feed a trainable projector and fresh CAD LoRA adapter.](figures/training-ft1.png)](figures/training-ft1.png)
 
-*From Moira Climent Gispert’s bachelor’s thesis (2025).*
+*FT1 trains a fresh coronary CT adapter and the projector over a frozen CT-CHAT baseline.*
 
 ### FT2: continue an existing adapter
 
@@ -56,7 +56,7 @@ FT2 continues training an existing CT-CHAT LoRA adapter on coronary CT angiograp
 
 [![FT2 thesis diagram: the CT-CLIP encoder and LLaMA base remain frozen; the existing CT-CHAT LoRA adapter and visual projector continue training.](figures/training-ft2.png)](figures/training-ft2.png)
 
-*From Moira Climent Gispert’s bachelor’s thesis (2025).*
+*FT2 updates the existing CT-CHAT adapter and projector while the LLaMA base and image encoder remain frozen.*
 
 The pretrained CT-CHAT model is hosted through the CT-RATE Hugging Face repository. In the software, FT2 loads the adapter with `is_trainable=True` and checks its tensor keys, shapes and values. Its saved configuration determines the rank and scaling; requesting a different rank produces an error.
 
@@ -92,7 +92,7 @@ ccta-chat integrate --checkout /path/to/CT-CHAT
 
 `integrate` accepts a clean checkout, applies the packaged patch and verifies ten module fingerprints. Model commands verify those fingerprints again and import that explicit checkout. They reject a different `llava` installation already loaded in the process. The integration retains the upstream LLaMA and attention-pooling/MLP projector implementations; [the change map](upstream.md) describes the small patch.
 
-For the external encoder, use the CT-CLIP source at release dependency revision `a2a155c601987820433c01db69b64d701d3d229d`:
+For the external encoder, use the CT-CLIP source at commit `a2a155c601987820433c01db69b64d701d3d229d`:
 
 ```bash
 git clone https://github.com/ibrahimethemhamamci/CT-CLIP.git /path/to/CT-CLIP

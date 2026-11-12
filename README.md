@@ -6,7 +6,7 @@ For my bachelor’s thesis at Universitat Pompeu Fabra, I wanted to see how well
 
 [![Four-stage thesis workflow: acquisition of CCTA volumes, reports and structured annotations; dataset curation; CT-CHAT fine-tuning; and evaluation comparing a model answer with the reference answer.](docs/figures/workflow.png)](docs/figures/workflow.png)
 
-*Adapted from Moira Climent Gispert’s thesis figure (2025).* [Open the full-size workflow.](docs/figures/workflow.png)
+*From coronary CT acquisition to evaluation of the generated answers.*
 
 I compared two ways to fine-tune the model. **FT1** merges the original CT-CHAT adapter into the base model and trains a new adapter for coronary CT. **FT2** continues training an existing CT-CHAT adapter. Both strategies also train the projector that connects the scan features to the language model.
 
@@ -49,6 +49,6 @@ The base install has no runtime dependencies. Tests cover evaluation alignment a
 
 ## Credits
 
-My work builds on CT-CHAT and CT-CLIP by Hamamci and colleagues. The shared model code is pinned to CT-CHAT commit [`33c9b97`](https://github.com/ibrahimethemhamamci/CT-CHAT/tree/33c9b973bf1babb3b79b5ffd8ae45948e758a3f2). See the [upstream credits](docs/upstream.md#credits-and-source-figures) and [third-party notices](THIRD_PARTY_NOTICES.md).
+My work builds on CT-CHAT and CT-CLIP by Hamamci and colleagues. The shared model code is pinned to CT-CHAT commit [`33c9b97`](https://github.com/ibrahimethemhamamci/CT-CHAT/tree/33c9b973bf1babb3b79b5ffd8ae45948e758a3f2). See the [upstream credits](docs/upstream.md#credits) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 Moira Climent Gispert. *Toward Specialized Med-VLMs: A Vision-Language Approach to Coronary Artery Disease.* Bachelor’s thesis, Universitat Pompeu Fabra, 2025.
